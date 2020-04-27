@@ -1,0 +1,37 @@
+version: '3.7'
+services:
+  traefik:
+    image: traefik:cantal
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/traefik.yml
+      - ./acme.json:/acme.json
+    networks:
+      - exposed
+    environment:
+      - OVH_APPLICATION_SECRET=${OVH_APPLICATION_SECRET}
+      - OVH_ENDPOINT=${OVH_ENDPOINT}
+      - OVH_APPLICATION_KEY=${OVH_APPLICATION_KEY}
+      - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.http_catchall.rule=HostRegexp({any: .+})"
+      - traefik.http.routers.http_catchall.entrypoints=insecure
+      - traefik.http.routers.http_catchall.middlewares=https_redirect
+      - traefik.http.middlewares.https_redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https_redirect.redirectscheme.permanent=true
+      - traefik.http.routers.api.rule=Host(monitor.lebit.tech)
+      - traefik.http.routers.api.entrypoints=secure
+      - traefik.http.routers.api.service=api@internal
+      - traefik.http.routers.api.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$W7WDbDKw$$6rHqyqDUbs9SpAnHUrXfr0
+      - traefik.http.routers.api.tls.certresolver=letsencrypt
+
+networks:
+  exposed:
+    external: true
