@@ -1,2 +1,2 @@
-traefik/ovh*
-traefik/getkey.sh
+monitor/.env
+monitor/acme.json
