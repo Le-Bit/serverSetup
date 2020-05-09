@@ -1,2 +1,4 @@
-monitor/.env
 monitor/acme.json
+*/.env
+media/data
+media/config

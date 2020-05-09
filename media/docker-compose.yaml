@@ -1,60 +1,89 @@
 version: "2"
+
+networks:
+  exposed:
+    external: true
+
 services:
-    bit:
-        image: linuxserver/transmission
+    deluge:
+        image: linuxserver/deluge:latest
         restart: always
+        networks:
+                - exposed
         ports:
-                - "9091:9091"
-                - "51413:51413"
-                - "51413:51413/udp"
+                - "58846:58846"
+                - "58946:58946"
+        expose:
+                - "58946/udp"
+                - "58846"
+                - "58946"
         volumes:
-                - ${USERDIR}/config/transmission:/config
-                - ${USERDIR}/media/downloads:/downloads
-                - ${USERDIR}/media/watch:/watch
+                - ${USERDIR}/config/deluge:/config
+                - ${USERDIR}/data/downloads:/downloads
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.deluge-https.entrypoints=secure
+                - traefik.http.routers.deluge-https.tls.certresolver=le
+                - traefik.http.services.deluge.loadbalancer.server.port=8112
         environment:
                 - PUID=${PUID}
                 - PGID=${PGID}
                 - TZ=${TZ}
 
-    sonarr:
-        image: linuxserver/sonarr
+    series:
+        image: linuxserver/sonarr:preview
         restart: always
+        networks:
+                - exposed
         depends_on:
-                - bit
+                - deluge
                 - jackett
-        ports:
-                - "8989:8989"
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.series-https.entrypoints=secure
+                - traefik.http.routers.series-https.tls.certresolver=le
+                - traefik.http.services.series.loadbalancer.server.port=8989
         volumes:
                 - ${USERDIR}/config/sonarr:/config
-                - ${USERDIR}/media/downloads:/downloads
-                - ${USERDIR}/media/tv:/tv
+                - ${USERDIR}/data/downloads:/downloads
+                - ${USERDIR}/data/tv:/tv
         environment:
                 - PUID=${PUID}
                 - PGID=${PGID}
                 - TZ=${TZ}
 
-    radarr:
-        image: linuxserver/radarr
+    films:
+        image: linuxserver/radarr:preview
         restart: always
+        networks:
+                - exposed
         depends_on:
-                - bit
+                - deluge
                 - jackett
-        ports:
-                - "7878:7878"
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.films-https.entrypoints=secure
+                - traefik.http.routers.films-https.tls.certresolver=le
+                - traefik.http.services.films.loadbalancer.server.port=7878
         volumes:
                 - ${USERDIR}/config/radarr:/config
-                - ${USERDIR}/media/downloads:/downloads
-                - ${USERDIR}/media/movies:/movies
+                - ${USERDIR}/data/downloads:/downloads
+                - ${USERDIR}/data/movies:/movies
         environment:
                 - PUID=${PUID}
                 - PGID=${PGID}
                 - TZ=${TZ}
 
     jackett:
-        image: linuxserver/jackett
+        image: linuxserver/jackett:development
         restart: always
-        ports:
-                - "9117:9117"
+        networks:
+                - exposed
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.jackett-https.entrypoints=secure
+                - traefik.http.routers.jackett-https.tls.certresolver=le
+                - traefik.http.services.jackett.loadbalancer.server.port=9117
         volumes:
                 - ${USERDIR}/config/jackett:/config
         environment:
@@ -62,18 +91,65 @@ services:
                 - PGID=${PGID}
                 - TZ=${TZ}
 
-    emby:
-        image: dperson/emby
+    stream:
+        image: linuxserver/emby:beta
         restart: always
-        ports:
-                - "8096:8096"
+        networks:
+                - exposed
         expose:
                 - "7359/udp"
                 - "1900/udp"
         volumes:
                 - ${USERDIR}/config/emby:/config
-                - ${USERDIR}/media/movies:/media/movies
-                - ${USERDIR}/media/tv:/media/tv
+                - ${USERDIR}/data/movies:/media/movies
+                - ${USERDIR}/data/tv:/media/tv
+        devices:
+                - /dev/dri:/dev/dri
         environment:
-                - USERID=${PUID}
-                - GROUPID=${PGID}
+                - PUID=${PUID}
+                - PGID=${PGID}
+                - TZ=${TZ}
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.stream-https.entrypoints=secure
+                - traefik.http.routers.stream-https.tls.certresolver=le
+                - traefik.http.services.stream.loadbalancer.server.port=8096
+
+    requete:
+        image: linuxserver/ombi:v4-preview
+        restart: always
+        networks:
+                - exposed
+        environment:
+                - PUID=${PUID}
+                - PGID=${PGID}
+                - TZ=${TZ}
+        volumes:
+                - ${USERDIR}/config/ombi:/config
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.requete-https.entrypoints=secure
+                - traefik.http.routers.requete-https.tls.certresolver=le
+                - traefik.http.services.requete.loadbalancer.server.port=3579
+
+    embit:
+        image: lebit01/embit:latest
+        restart: always
+        networks:
+                - exposed
+        environment:
+                - NODE_ENV=production
+                - MONGO_URI=${MONGO_URI}
+                - EMBYURI=${EMBYURI}
+                - PRIV_FILE=${PRIV_FILE}
+                - PUB_FILE=${PUB_FILE}
+                - EMBYTOKEN=${EMBYTOKEN}
+                - EMBYUSERID=${EMBYUSERID}
+                - EMBYAPIKEY=${EMBYAPIKEY}
+                - SECRET_TOKEN=${SECRET_TOKEN}
+                - API_ENDPOINT=${API_ENDPOINT}
+        labels:
+                - traefik.enable=true
+                - traefik.http.routers.embit-https.entrypoints=secure
+                - traefik.http.routers.embit-https.tls.certresolver=le
+                - traefik.http.services.embit.loadbalancer.server.port=3000

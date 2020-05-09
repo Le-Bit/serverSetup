@@ -16,6 +16,7 @@ log:
 
 providers:
   docker:
+    defaultRule: "Host(`{{ index .Labels \"com.docker.compose.service\" }}.lebit.tech`)"
     endpoint: "unix:///var/run/docker.sock"
     watch: true
     exposedByDefault: true
